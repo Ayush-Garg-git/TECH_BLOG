@@ -1,0 +1,79 @@
+package com.tech.blog.servlets;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import javax.servlet.http.Part;
+
+import com.tech.blog.DAO.userDao;
+import com.tech.blog.entities.user;
+import com.tech.blog.helper.connectionProvider;
+import com.tech.blog.helper.helper;
+@WebServlet("/EditServlet")
+@MultipartConfig
+public class EditServlet extends HttpServlet {
+
+	protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+	    throws ServletException, IOException {
+
+	    String email = req.getParameter("user_email");
+	    String password = req.getParameter("user_password");
+	    String bio = req.getParameter("user_Bio");
+	    String name = req.getParameter("user_name");
+	    String mobilenumber = req.getParameter("user_mobile");
+	    
+	    Part part = req.getPart("image");
+	    String imageName = part.getSubmittedFileName();
+
+	    HttpSession session = req.getSession();
+	    user u = (user) session.getAttribute("currentuser");
+
+	    // save old profile pic name before updating user
+	    String oldPic = u.getProfile();
+
+	    // update user object
+	    u.setEmail(email);
+	    u.setAbout(bio);
+	    u.setPassword(password);
+	    u.setPhoneNumber(mobilenumber);
+	    u.setProfile(imageName);
+	    u.setName(name);
+
+	    // update DB
+	    userDao dao = new userDao(connectionProvider.getConn());
+	    boolean updated = dao.updateUser(u);
+
+	    if (updated) {
+
+	        // path to save image
+	        String dir = req.getServletContext().getRealPath("/") + "pfp";
+	        File folder = new File(dir);
+	        if (!folder.exists()) folder.mkdir();
+
+	        String newFilePath = dir + File.separator + imageName;
+	        String oldFilePath = dir + File.separator + oldPic;
+
+	        helper.deleteFile(oldFilePath);  // delete old photo
+
+	        // save new photo
+	        if (helper.saveFile(part.getInputStream(), newFilePath)) {
+	            resp.getWriter().println("Profile updated successfully!");
+	        } else {
+	            resp.getWriter().println("Error saving file.");
+	        }
+
+	    } else {
+	        resp.getWriter().println("Database update failed.");
+	    }
+	}
+
+
+}
