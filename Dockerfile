@@ -1,10 +1,18 @@
+# ---------- Build stage ----------
+FROM maven:3.9.6-eclipse-temurin-11 AS builder
+
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+
+RUN mvn clean package -DskipTests
+
+# ---------- Run stage ----------
 FROM tomcat:9.0-jdk11
 
-# Remove default Tomcat apps
 RUN rm -rf /usr/local/tomcat/webapps/*
 
-# Copy WAR to ROOT context
-COPY target/*.war /usr/local/tomcat/webapps/ROOT.war
+COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
 EXPOSE 8080
 
